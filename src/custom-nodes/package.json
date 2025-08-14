@@ -1,0 +1,23 @@
+{
+  "name": "random-number-node",
+  "version": "1.0.0",
+  "description": "Nó n8n personalizado para gerar um número aleatório entre min e max",
+  "main": "disc/RandomNumber.node.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "keywords": [],
+  "author": "jeronimo santos",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "n8n-core": "^1.14.1",
+    "n8n-workflow": "^1.82.0"
+  }
+}
