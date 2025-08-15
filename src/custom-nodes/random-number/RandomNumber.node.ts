@@ -1,52 +1,95 @@
-import { IExecuteFunctions } from 'n8n-workflow';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import type { NodeConnectionType } from 'n8n-workflow';
+import fetch from 'node-fetch';
+import type {
+  IExecuteFunctions,
+  INodeExecutionData,
+  INodeType,
+  INodeTypeDescription,
+  NodeConnectionType,
+} from 'n8n-workflow';
 
 export class RandomNumber implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Random Number',
-		name: 'randomNumber',
-		icon: 'file:random.svg',
-		group: ['transform'],
-		version: 1,
-		description: 'Generate a random integer between min and max (inclusive)',
-		defaults: {
-			name: 'Random Number',
-		},
-		inputs: ['main'] as NodeConnectionType[],
-		outputs: ['main'] as NodeConnectionType[],
-		properties: [
-			{
-				displayName: 'Min',
-				name: 'min',
-				type: 'number',
-				default: 1,
-				description: 'Minimum value (inclusive)',
-			},
-			{
-				displayName: 'Max',
-				name: 'max',
-				type: 'number',
-				default: 100,
-				description: 'Maximum value (inclusive)',
-			},
-		],
-	};
+  description: INodeTypeDescription = {
+    displayName: 'Random.org Random Number',
+    name: 'randomOrgNumber',
+    group: ['transform'],
+    version: 1,
+    description: 'Gets a random number from Random.org',
+    defaults: {
+      name: 'Random.org Number',
+    },
+    inputs: ['main'] as NodeConnectionType[],
+    outputs: ['main'] as NodeConnectionType[],
+    properties: [
+      {
+        displayName: 'API Key',
+        name: 'apiKey',
+        type: 'string',
+        typeOptions: { password: true },
+        default: '',
+        description: 'Your Random.org API key',
+      },
+      {
+        displayName: 'Min',
+        name: 'min',
+        type: 'number',
+        default: 1,
+      },
+      {
+        displayName: 'Max',
+        name: 'max',
+        type: 'number',
+        default: 100,
+      },
+    ],
+  };
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		let returnData: INodeExecutionData[] = [];
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const apiKey = this.getNodeParameter('apiKey', 0) as string;
+    const min = this.getNodeParameter('min', 0) as number;
+    const max = this.getNodeParameter('max', 0) as number;
 
-		for (let i = 0; i < items.length; i++) {
-			const min = this.getNodeParameter('min', i) as number;
-			const max = this.getNodeParameter('max', i) as number;
+    const body = {
+      jsonrpc: '2.0',
+      method: 'generateIntegers',
+      params: {
+        apiKey,
+        n: 1,
+        min,
+        max,
+        replacement: true,
+      },
+      id: 42,
+    };
 
-			// Gera número aleatório
-			const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
+    const response = await fetch('https://api.random.org/json-rpc/4/invoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
 
-			returnData.push({ json: { result: randomNumber, min, max } });
-		}
+	interface RandomOrgResponse {
+  		result?: {
+    		random: {
+      		data: number[];
+    	};
+  	};
+  		error?: {
+    	code: number;
+    	message: string;
+  	};
+}
 
-		return [returnData];
-	}
+    const data = (await response.json()) as RandomOrgResponse;
+
+    if (data.error) {
+      throw new Error(`Random.org error: ${data.error.message}`);
+    }
+
+    if (!data.result || !data.result.random || !Array.isArray(data.result.random.data)) {
+      throw new Error('Invalid response from Random.org');
+    }
+    const randomValue = data.result.random.data[0];
+
+    return [[{ json: { value: randomValue } }]];
+  }
 }
